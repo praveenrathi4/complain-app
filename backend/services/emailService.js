@@ -10,7 +10,7 @@ try {
 
 class EmailService {
   constructor() {
-    this.transporter = nodemailer.createTransporter({
+    this.transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST || config.EMAIL_HOST,
       port: process.env.EMAIL_PORT || config.EMAIL_PORT,
       secure: false, // true for 465, false for other ports

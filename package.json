@@ -1,0 +1,23 @@
+{
+  "name": "complaint-management-app",
+  "version": "1.0.0",
+  "description": "Cross-platform complaint management app for business dealers and customers",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run backend:dev\" \"npm run web:dev\"",
+    "backend:dev": "cd backend && npm run dev",
+    "backend:start": "cd backend && npm start",
+    "web:dev": "cd web && npm start",
+    "web:build": "cd web && npm run build",
+    "mobile:start": "cd mobile && expo start",
+    "mobile:android": "cd mobile && expo start --android",
+    "mobile:ios": "cd mobile && expo start --ios",
+    "install:all": "npm install && cd backend && npm install && cd ../web && npm install && cd ../mobile && npm install"
+  },
+  "keywords": ["complaint", "management", "whatsapp", "email", "cross-platform"],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+} 

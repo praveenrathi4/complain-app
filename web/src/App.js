@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const API_URL = 'http://localhost:5000/api'; // Change to your backend URL after deployment
+const API_URL = 'https://complain-app-backend.onrender.com/api'; // Confirmed correct backend URL
 
 function App() {
   const [view, setView] = useState('login');

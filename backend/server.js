@@ -22,6 +22,17 @@ try {
 
 const app = express();
 
+// CORS configuration (must be first middleware)
+app.use(cors({
+  origin: [
+    'https://complainapp.netlify.app', // Netlify frontend
+    'http://localhost:3000',           // local dev
+    'http://localhost:19006'           // local dev (React Native)
+  ],
+  credentials: true
+}));
+app.options('*', cors());
+
 // Security middleware
 app.use(helmet());
 
@@ -32,16 +43,6 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.'
 });
 app.use(limiter);
-
-// CORS configuration
-app.use(cors({
-  origin: [
-    'https://complainapp.netlify.app', // Netlify frontend
-    'http://localhost:3000',           // local dev
-    'http://localhost:19006'           // local dev (React Native)
-  ],
-  credentials: true
-}));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));

@@ -35,9 +35,11 @@ app.use(limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? 
-    ['https://yourapp.com'] : 
-    ['http://localhost:3000', 'http://localhost:19006'],
+  origin: [
+    'https://complainapp.netlify.app', // Netlify frontend
+    'http://localhost:3000',           // local dev
+    'http://localhost:19006'           // local dev (React Native)
+  ],
   credentials: true
 }));
 

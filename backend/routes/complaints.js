@@ -65,7 +65,7 @@ router.post('/', protect, upload.array('attachments', 5), [
     }
 
     // Create complaint
-    const complaint = await Complaint.create({
+    const complaint = new Complaint({
       title,
       description,
       category,
@@ -80,7 +80,6 @@ router.post('/', protect, upload.array('attachments', 5), [
         userAgent: req.get('User-Agent')
       }
     });
-
     // Add initial timeline entry
     complaint.addTimelineEntry('created', 'Complaint submitted by customer', req.user._id);
     await complaint.save();

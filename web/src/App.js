@@ -10,6 +10,8 @@ function App() {
   const [complaints, setComplaints] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
 
   // Fetch complaints after login
   useEffect(() => {
@@ -46,7 +48,13 @@ function App() {
         setUser(data.data.user);
         setView('dashboard');
       } else {
-        setError(data.message);
+        if (data.needsVerification) {
+          setNeedsVerification(true);
+          setVerificationEmail(data.email);
+          setError('Please verify your email first');
+        } else {
+          setError(data.message);
+        }
       }
     } catch (err) {
       setError('Network error');
@@ -133,16 +141,75 @@ function App() {
     setComplaints([]);
   };
 
+  // Verify email
+  const handleVerifyEmail = async e => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/auth/verify-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: verificationEmail, 
+          verificationToken: form.verificationToken 
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setError('');
+        setNeedsVerification(false);
+        setVerificationEmail('');
+        // Try login again automatically
+        const loginRes = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: form.email, password: form.password })
+        });
+        const loginData = await loginRes.json();
+        if (loginData.success) {
+          setToken(loginData.data.token);
+          setUser(loginData.data.user);
+          setView('dashboard');
+        } else {
+          setError(loginData.message);
+        }
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError('Network error');
+    }
+    setLoading(false);
+  };
+
   // UI
   if (view === 'login') {
     return (
       <div>
         <h2>Login</h2>
-        <form onSubmit={handleLogin}>
-          <input name="email" type="email" placeholder="Email" onChange={handleChange} required /><br />
-          <input name="password" type="password" placeholder="Password" onChange={handleChange} required /><br />
-          <button type="submit" disabled={loading}>Login</button>
-        </form>
+        {!needsVerification ? (
+          <form onSubmit={handleLogin}>
+            <input name="email" type="email" placeholder="Email" onChange={handleChange} required /><br />
+            <input name="password" type="password" placeholder="Password" onChange={handleChange} required /><br />
+            <button type="submit" disabled={loading}>Login</button>
+          </form>
+        ) : (
+          <div>
+            <p>Please verify your email to continue.</p>
+            <form onSubmit={handleVerifyEmail}>
+              <input 
+                name="verificationToken" 
+                placeholder="Enter 6-digit OTP" 
+                onChange={handleChange} 
+                maxLength="6"
+                required 
+              /><br />
+              <button type="submit" disabled={loading}>Verify Email</button>
+            </form>
+            <button onClick={() => { setNeedsVerification(false); setError(''); }}>Back to Login</button>
+          </div>
+        )}
         <button onClick={() => setView('register')}>Register</button>
         {error && <div style={{color:'red'}}>{error}</div>}
       </div>

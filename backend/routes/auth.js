@@ -135,6 +135,16 @@ router.post('/login', [
       });
     }
 
+    // Check if email is verified
+    if (!user.isEmailVerified) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please verify your email before logging in',
+        needsVerification: true,
+        email: user.email
+      });
+    }
+
     // Update last login
     user.lastLogin = new Date();
     await user.save();

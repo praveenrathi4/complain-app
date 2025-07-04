@@ -10,7 +10,6 @@ function App() {
   const [complaints, setComplaints] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [needsVerification, setNeedsVerification] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
 
   // Fetch complaints after login
@@ -75,7 +74,6 @@ function App() {
       const data = await res.json();
       if (data.success) {
         if (data.needsVerification) {
-          setNeedsVerification(true);
           setVerificationEmail(data.email);
           setView('verification');
           setError('Please check your email and enter the verification code.');
@@ -159,7 +157,6 @@ function App() {
       const data = await res.json();
       if (data.success) {
         setError('');
-        setNeedsVerification(false);
         // Store credentials before clearing form
         const loginEmail = verificationEmail;
         const loginPassword = form.password;
@@ -221,7 +218,7 @@ function App() {
             {loading ? 'Verifying...' : 'Complete Registration'}
           </button>
         </form>
-        <button onClick={() => {setNeedsVerification(false); setView('login');}}>
+        <button onClick={() => {setView('login');}}>
           Back to Login
         </button>
         {error && <div style={{color:'red'}}>{error}</div>}

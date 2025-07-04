@@ -3,7 +3,7 @@ const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { protect, generateToken } = require('../middleware/auth');
 const emailService = require('../services/emailService');
-const whatsappService = require('../services/whatsappService');
+const twilioWhatsAppService = require('../services/twilioWhatsAppService');
 const crypto = require('crypto');
 
 const router = express.Router();
@@ -540,7 +540,7 @@ router.post('/send-phone-verification', async (req, res) => {
 
     // Send WhatsApp verification message
     try {
-      await whatsappService.sendVerificationMessage(phone, name || 'User', verificationCode);
+      await twilioWhatsAppService.sendVerificationMessage(phone, name || 'User', verificationCode);
     } catch (whatsappError) {
       console.error('Failed to send WhatsApp verification:', whatsappError);
       pendingPhoneVerifications.delete(phone);

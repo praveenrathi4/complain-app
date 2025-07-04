@@ -21,6 +21,14 @@ module.exports = {
   WHATSAPP_VERIFY_TOKEN: 'your_custom_verify_token', // Any string you choose for webhook verification
   WHATSAPP_PHONE_NUMBER_ID: 'your_phone_number_id', // Phone Number ID from WhatsApp API Setup
 
+  // Twilio WhatsApp API Configuration (Alternative - No Facebook account needed)
+  // 1. Go to https://www.twilio.com/
+  // 2. Create account and get credentials
+  // 3. Enable WhatsApp in Twilio Console
+  TWILIO_ACCOUNT_SID: 'your_twilio_account_sid', // From Twilio Console
+  TWILIO_AUTH_TOKEN: 'your_twilio_auth_token', // From Twilio Console
+  TWILIO_WHATSAPP_NUMBER: 'your_twilio_whatsapp_number', // WhatsApp number from Twilio (e.g., +14155238886)
+
   // Server Configuration
   PORT: 5000,
   NODE_ENV: 'development',

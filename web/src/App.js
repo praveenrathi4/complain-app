@@ -157,25 +157,12 @@ function App() {
       const data = await res.json();
       if (data.success) {
         setError('');
-        // Store credentials before clearing form
-        const loginEmail = verificationEmail;
-        const loginPassword = form.password;
         setVerificationEmail('');
         setForm({}); // Clear the form
-        // Registration complete, automatically log in
-        const loginRes = await fetch(`${API_URL}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: loginEmail, password: loginPassword })
-        });
-        const loginData = await loginRes.json();
-        if (loginData.success) {
-          setToken(loginData.data.token);
-          setUser(loginData.data.user);
-          setView('dashboard');
-        } else {
-          setError(loginData.message);
-        }
+        // Registration complete, user is automatically logged in
+        setToken(data.data.token);
+        setUser(data.data.user);
+        setView('dashboard');
       } else {
         setError(data.message);
       }

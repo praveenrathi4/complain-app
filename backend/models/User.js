@@ -53,7 +53,7 @@ const userSchema = new mongoose.Schema({
   },
   isEmailVerified: {
     type: Boolean,
-    default: false
+    default: true // Always true since we verify before creation
   },
   isPhoneVerified: {
     type: Boolean,
@@ -70,8 +70,6 @@ const userSchema = new mongoose.Schema({
   lastLogin: {
     type: Date
   },
-  emailVerificationToken: String,
-  emailVerificationExpire: Date,
   passwordResetToken: String,
   passwordResetExpire: Date
 }, {
@@ -98,16 +96,6 @@ userSchema.methods.comparePassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Generate email verification token
-userSchema.methods.generateEmailVerificationToken = function() {
-  const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
-  
-  this.emailVerificationToken = verificationToken;
-  this.emailVerificationExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
-  
-  return verificationToken;
-};
-
 // Generate password reset token
 userSchema.methods.generatePasswordResetToken = function() {
   const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
@@ -122,8 +110,6 @@ userSchema.methods.generatePasswordResetToken = function() {
 userSchema.methods.toJSON = function() {
   const userObject = this.toObject();
   delete userObject.password;
-  delete userObject.emailVerificationToken;
-  delete userObject.emailVerificationExpire;
   delete userObject.passwordResetToken;
   delete userObject.passwordResetExpire;
   return userObject;

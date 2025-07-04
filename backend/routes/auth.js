@@ -4,67 +4,74 @@ const User = require('../models/User');
 const { protect, generateToken } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 const whatsappService = require('../services/whatsappService');
+const crypto = require('crypto');
 
 const router = express.Router();
 
-// Register user
-router.post('/register', [
-  body('name').trim().isLength({ min: 2, max: 50 }).withMessage('Name must be between 2 and 50 characters'),
-  body('email').isEmail().normalizeEmail().withMessage('Please enter a valid email'),
-  body('phone').isMobilePhone().withMessage('Please enter a valid phone number'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('role').optional().isIn(['customer', 'dealer']).withMessage('Invalid role'),
-  body('businessName').optional().trim().isLength({ max: 100 }).withMessage('Business name cannot exceed 100 characters')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation errors',
-        errors: errors.array()
-      });
-    }
+// Temporary storage for pending registrations
+const pendingRegistrations = new Map();
 
+// Register user
+router.post('/register', async (req, res) => {
+  try {
     const { name, email, phone, password, role, businessName, address } = req.body;
 
     // Check if user already exists
-    const existingUser = await User.findOne({
-      $or: [{ email }, { phone }]
-    });
-
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'User with this email or phone already exists'
+        message: 'User already exists'
       });
     }
 
-    // Create user
-    const user = await User.create({
+    // Check if email is already pending verification
+    if (pendingRegistrations.has(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email verification already pending. Please check your email.'
+      });
+    }
+
+    // Generate verification token
+    const verificationToken = crypto.randomBytes(3).toString('hex').toUpperCase();
+
+    // Store registration data temporarily
+    const registrationData = {
       name,
       email,
       phone,
       password,
       role: role || 'customer',
       businessName,
-      address
-    });
+      address,
+      verificationToken,
+      createdAt: new Date()
+    };
 
-    // Generate email verification token
-    const verificationToken = user.generateEmailVerificationToken();
-    await user.save();
+    // Store with email as key (will be cleaned up after verification or timeout)
+    pendingRegistrations.set(email, registrationData);
 
     // Send verification email
     try {
       await emailService.sendVerificationEmail(email, name, verificationToken);
     } catch (emailError) {
       console.error('Failed to send verification email:', emailError);
+      pendingRegistrations.delete(email);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send verification email. Please try again.'
+      });
     }
 
-    res.status(201).json({
+    // Clean up pending registrations older than 10 minutes
+    setTimeout(() => {
+      pendingRegistrations.delete(email);
+    }, 10 * 60 * 1000);
+
+    res.status(200).json({
       success: true,
-      message: 'Registration initiated. Please check your email for verification code.',
+      message: 'Please check your email for verification code to complete registration.',
       needsVerification: true,
       email: email
     });
@@ -72,7 +79,7 @@ router.post('/register', [
     console.error('Registration error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error during registration'
+      message: 'Registration failed'
     });
   }
 });
@@ -156,50 +163,77 @@ router.post('/login', [
 });
 
 // Verify email
-router.post('/verify-email', [
-  body('email').isEmail().normalizeEmail().withMessage('Please enter a valid email'),
-  body('verificationToken').isLength({ min: 6, max: 6 }).withMessage('Verification token must be 6 digits')
-], async (req, res) => {
+router.post('/verify-email', async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation errors',
-        errors: errors.array()
-      });
-    }
-
     const { email, verificationToken } = req.body;
 
-    const user = await User.findOne({
-      email,
-      emailVerificationToken: verificationToken,
-      emailVerificationExpire: { $gt: Date.now() }
-    });
-
-    if (!user) {
+    // Find pending registration
+    const registrationData = pendingRegistrations.get(email);
+    if (!registrationData) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid or expired verification token'
+        message: 'No pending registration found for this email'
       });
     }
 
-    // Mark email as verified
-    user.isEmailVerified = true;
-    user.emailVerificationToken = undefined;
-    user.emailVerificationExpire = undefined;
-    await user.save();
+    // Check if verification token matches
+    if (registrationData.verificationToken !== verificationToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid verification code'
+      });
+    }
+
+    // Check if registration is not expired (10 minutes)
+    const now = new Date();
+    const registrationTime = new Date(registrationData.createdAt);
+    if (now - registrationTime > 10 * 60 * 1000) {
+      pendingRegistrations.delete(email);
+      return res.status(400).json({
+        success: false,
+        message: 'Verification code has expired. Please register again.'
+      });
+    }
+
+    // Create user in database
+    const user = await User.create({
+      name: registrationData.name,
+      email: registrationData.email,
+      phone: registrationData.phone,
+      password: registrationData.password,
+      role: registrationData.role,
+      businessName: registrationData.businessName,
+      address: registrationData.address,
+      isEmailVerified: true // Mark as verified since we verified before creation
+    });
+
+    // Remove from pending registrations
+    pendingRegistrations.delete(email);
+
+    // Generate JWT token
+    const token = generateToken(user._id);
 
     res.json({
       success: true,
-      message: 'Email verified successfully. Registration completed!'
+      message: 'Email verified successfully. Registration completed!',
+      data: {
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          isEmailVerified: user.isEmailVerified,
+          isPhoneVerified: user.isPhoneVerified
+        }
+      }
     });
   } catch (error) {
     console.error('Email verification error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error during email verification'
+      message: 'Email verification failed'
     });
   }
 });

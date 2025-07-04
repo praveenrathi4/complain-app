@@ -34,7 +34,7 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_URL = 'https://complain-app-backend.onrender.com/api';
+export const API_BASE_URL = "https://complain-app-backend.onrender.com";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -81,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
         email,
         password,
       });
@@ -101,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (userData: RegisterData) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/register`, userData);
+      const response = await axios.post(`${API_BASE_URL}/api/auth/register`, userData);
 
       if (response.data.success) {
         if (response.data.needsVerification) {
@@ -120,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const sendPhoneVerification = async (phone: string, name: string) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/send-phone-verification`, {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/send-phone-verification`, {
         phone,
         name,
       });
@@ -135,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const verifyPhone = async (phone: string, code: string) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/verify-phone-registration`, {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/verify-phone-registration`, {
         phone,
         verificationCode: code,
       });
@@ -150,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const verifyEmail = async (email: string, code: string) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/verify-email`, {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/verify-email`, {
         email,
         verificationToken: code,
       });

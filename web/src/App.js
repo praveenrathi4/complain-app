@@ -77,6 +77,7 @@ function App() {
         if (data.needsVerification) {
           setNeedsVerification(true);
           setVerificationEmail(data.email);
+          setView('verification');
           setError('Please check your email and enter the verification code.');
         } else {
           alert('Registration successful! Please check your email for verification.');
@@ -160,6 +161,7 @@ function App() {
         setError('');
         setNeedsVerification(false);
         setVerificationEmail('');
+        setForm({}); // Clear the form
         // Registration complete, automatically log in
         const loginRes = await fetch(`${API_URL}/auth/login`, {
           method: 'POST',
@@ -188,34 +190,37 @@ function App() {
     return (
       <div>
         <h2>Login</h2>
-        {!needsVerification ? (
-          <form onSubmit={handleLogin}>
-            <input name="email" type="email" placeholder="Email" onChange={handleChange} required /><br />
-            <input name="password" type="password" placeholder="Password" onChange={handleChange} required /><br />
-            <button type="submit" disabled={loading}>Login</button>
-          </form>
-        ) : (
-          <div className="form-container">
-            <h2>Complete Registration</h2>
-            <p>Please check your email and enter the verification code to complete your registration.</p>
-            <form onSubmit={handleVerifyEmail}>
-              <input
-                type="text"
-                placeholder="Verification Code"
-                value={form.verificationToken || ''}
-                onChange={e => setForm({...form, verificationToken: e.target.value})}
-                required
-              />
-              <button type="submit" disabled={loading}>
-                {loading ? 'Verifying...' : 'Complete Registration'}
-              </button>
-            </form>
-            <button onClick={() => {setNeedsVerification(false); setView('login');}}>
-              Back to Login
-            </button>
-          </div>
-        )}
+        <form onSubmit={handleLogin}>
+          <input name="email" type="email" placeholder="Email" onChange={handleChange} required /><br />
+          <input name="password" type="password" placeholder="Password" onChange={handleChange} required /><br />
+          <button type="submit" disabled={loading}>Login</button>
+        </form>
         <button onClick={() => setView('register')}>Register</button>
+        {error && <div style={{color:'red'}}>{error}</div>}
+      </div>
+    );
+  }
+
+  if (view === 'verification') {
+    return (
+      <div>
+        <h2>Complete Registration</h2>
+        <p>Please check your email and enter the verification code to complete your registration.</p>
+        <form onSubmit={handleVerifyEmail}>
+          <input
+            type="text"
+            placeholder="Verification Code"
+            value={form.verificationToken || ''}
+            onChange={e => setForm({...form, verificationToken: e.target.value})}
+            required
+          />
+          <button type="submit" disabled={loading}>
+            {loading ? 'Verifying...' : 'Complete Registration'}
+          </button>
+        </form>
+        <button onClick={() => {setNeedsVerification(false); setView('login');}}>
+          Back to Login
+        </button>
         {error && <div style={{color:'red'}}>{error}</div>}
       </div>
     );

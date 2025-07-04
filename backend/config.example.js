@@ -14,9 +14,12 @@ module.exports = {
   EMAIL_PASS: 'your_app_password',
 
   // WhatsApp Business API Configuration
-  WHATSAPP_TOKEN: 'your_whatsapp_business_api_token',
-  WHATSAPP_VERIFY_TOKEN: 'your_verify_token',
-  WHATSAPP_PHONE_NUMBER_ID: 'your_phone_number_id',
+  // 1. Go to https://developers.facebook.com/
+  // 2. Create app and add WhatsApp product
+  // 3. Get credentials from WhatsApp > Getting Started
+  WHATSAPP_TOKEN: 'your_whatsapp_business_api_token', // Permanent Access Token from Meta
+  WHATSAPP_VERIFY_TOKEN: 'your_custom_verify_token', // Any string you choose for webhook verification
+  WHATSAPP_PHONE_NUMBER_ID: 'your_phone_number_id', // Phone Number ID from WhatsApp API Setup
 
   // Server Configuration
   PORT: 5000,

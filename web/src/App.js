@@ -48,13 +48,7 @@ function App() {
         setUser(data.data.user);
         setView('dashboard');
       } else {
-        if (data.needsVerification) {
-          setNeedsVerification(true);
-          setVerificationEmail(data.email);
-          setError('Please verify your email first');
-        } else {
-          setError(data.message);
-        }
+        setError(data.message);
       }
     } catch (err) {
       setError('Network error');
@@ -80,12 +74,18 @@ function App() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Registration successful! Please check your email for verification.');
-        setView('login');
+        if (data.needsVerification) {
+          setNeedsVerification(true);
+          setVerificationEmail(data.email);
+          setError('Please check your email and enter the verification code.');
+        } else {
+          alert('Registration successful! Please check your email for verification.');
+          setView('login');
+        }
       } else {
         setError(data.message);
       }
-    } catch (err) {
+    } catch (error) {
       setError('Network error');
     }
     setLoading(false);
@@ -160,7 +160,7 @@ function App() {
         setError('');
         setNeedsVerification(false);
         setVerificationEmail('');
-        // Try login again automatically
+        // Registration complete, automatically log in
         const loginRes = await fetch(`${API_URL}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -195,19 +195,24 @@ function App() {
             <button type="submit" disabled={loading}>Login</button>
           </form>
         ) : (
-          <div>
-            <p>Please verify your email to continue.</p>
+          <div className="form-container">
+            <h2>Complete Registration</h2>
+            <p>Please check your email and enter the verification code to complete your registration.</p>
             <form onSubmit={handleVerifyEmail}>
-              <input 
-                name="verificationToken" 
-                placeholder="Enter 6-digit OTP" 
-                onChange={handleChange} 
-                maxLength="6"
-                required 
-              /><br />
-              <button type="submit" disabled={loading}>Verify Email</button>
+              <input
+                type="text"
+                placeholder="Verification Code"
+                value={form.verificationToken || ''}
+                onChange={e => setForm({...form, verificationToken: e.target.value})}
+                required
+              />
+              <button type="submit" disabled={loading}>
+                {loading ? 'Verifying...' : 'Complete Registration'}
+              </button>
             </form>
-            <button onClick={() => { setNeedsVerification(false); setError(''); }}>Back to Login</button>
+            <button onClick={() => {setNeedsVerification(false); setView('login');}}>
+              Back to Login
+            </button>
           </div>
         )}
         <button onClick={() => setView('register')}>Register</button>

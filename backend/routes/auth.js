@@ -62,24 +62,11 @@ router.post('/register', [
       console.error('Failed to send verification email:', emailError);
     }
 
-    // Generate JWT token
-    const token = generateToken(user._id);
-
     res.status(201).json({
       success: true,
-      message: 'User registered successfully. Please check your email for verification.',
-      data: {
-        token,
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          isEmailVerified: user.isEmailVerified,
-          isPhoneVerified: user.isPhoneVerified
-        }
-      }
+      message: 'Registration initiated. Please check your email for verification code.',
+      needsVerification: true,
+      email: email
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -132,16 +119,6 @@ router.post('/login', [
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
-      });
-    }
-
-    // Check if email is verified
-    if (!user.isEmailVerified) {
-      return res.status(401).json({
-        success: false,
-        message: 'Please verify your email before logging in',
-        needsVerification: true,
-        email: user.email
       });
     }
 
@@ -214,9 +191,9 @@ router.post('/verify-email', [
     user.emailVerificationExpire = undefined;
     await user.save();
 
-    res.status(200).json({
+    res.json({
       success: true,
-      message: 'Email verified successfully'
+      message: 'Email verified successfully. Registration completed!'
     });
   } catch (error) {
     console.error('Email verification error:', error);

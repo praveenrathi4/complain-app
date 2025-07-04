@@ -10,6 +10,7 @@ const router = express.Router();
 
 // Temporary storage for pending registrations
 const pendingRegistrations = new Map();
+const pendingPhoneVerifications = new Map();
 
 // Register user
 router.post('/register', async (req, res) => {
@@ -46,6 +47,7 @@ router.post('/register', async (req, res) => {
       businessName,
       address,
       verificationToken,
+      isPhoneVerified: false, // Track phone verification status
       createdAt: new Date()
     };
 
@@ -204,7 +206,8 @@ router.post('/verify-email', async (req, res) => {
       role: registrationData.role,
       businessName: registrationData.businessName,
       address: registrationData.address,
-      isEmailVerified: true // Mark as verified since we verified before creation
+      isEmailVerified: true, // Mark as verified since we verified before creation
+      isPhoneVerified: registrationData.isPhoneVerified
     });
 
     // Remove from pending registrations
@@ -489,6 +492,211 @@ router.put('/change-password', protect, [
     res.status(500).json({
       success: false,
       message: 'Server error while changing password'
+    });
+  }
+});
+
+// Send phone verification code
+router.post('/send-phone-verification', async (req, res) => {
+  try {
+    const { phone, name } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number is required'
+      });
+    }
+
+    // Check if phone is already verified for an existing user
+    const existingUser = await User.findOne({ phone, isPhoneVerified: true });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number is already verified by another user'
+      });
+    }
+
+    // Check if verification is already pending
+    if (pendingPhoneVerifications.has(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Verification code already sent. Please wait before requesting another.'
+      });
+    }
+
+    // Generate verification code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store verification data temporarily
+    const verificationData = {
+      phone,
+      name: name || 'User',
+      verificationCode,
+      createdAt: new Date()
+    };
+
+    pendingPhoneVerifications.set(phone, verificationData);
+
+    // Send WhatsApp verification message
+    try {
+      await whatsappService.sendVerificationMessage(phone, name || 'User', verificationCode);
+    } catch (whatsappError) {
+      console.error('Failed to send WhatsApp verification:', whatsappError);
+      pendingPhoneVerifications.delete(phone);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send verification code. Please try again.'
+      });
+    }
+
+    // Clean up after 10 minutes
+    setTimeout(() => {
+      pendingPhoneVerifications.delete(phone);
+    }, 10 * 60 * 1000);
+
+    res.json({
+      success: true,
+      message: 'Verification code sent to your WhatsApp number'
+    });
+  } catch (error) {
+    console.error('Phone verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send verification code'
+    });
+  }
+});
+
+// Verify phone number
+router.post('/verify-phone', async (req, res) => {
+  try {
+    const { phone, verificationCode } = req.body;
+
+    if (!phone || !verificationCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number and verification code are required'
+      });
+    }
+
+    // Find pending verification
+    const verificationData = pendingPhoneVerifications.get(phone);
+    if (!verificationData) {
+      return res.status(400).json({
+        success: false,
+        message: 'No pending verification found for this phone number'
+      });
+    }
+
+    // Check if verification code matches
+    if (verificationData.verificationCode !== verificationCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid verification code'
+      });
+    }
+
+    // Check if verification is not expired (10 minutes)
+    const now = new Date();
+    const verificationTime = new Date(verificationData.createdAt);
+    if (now - verificationTime > 10 * 60 * 1000) {
+      pendingPhoneVerifications.delete(phone);
+      return res.status(400).json({
+        success: false,
+        message: 'Verification code has expired. Please request a new one.'
+      });
+    }
+
+    // Remove from pending verifications
+    pendingPhoneVerifications.delete(phone);
+
+    res.json({
+      success: true,
+      message: 'Phone number verified successfully'
+    });
+  } catch (error) {
+    console.error('Phone verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Phone verification failed'
+    });
+  }
+});
+
+// Verify phone for pending registration
+router.post('/verify-phone-registration', async (req, res) => {
+  try {
+    const { email, phone, verificationCode } = req.body;
+
+    if (!email || !phone || !verificationCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, phone number and verification code are required'
+      });
+    }
+
+    // Find pending registration
+    const registrationData = pendingRegistrations.get(email);
+    if (!registrationData) {
+      return res.status(400).json({
+        success: false,
+        message: 'No pending registration found for this email'
+      });
+    }
+
+    // Check if phone matches the registration
+    if (registrationData.phone !== phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number does not match the registration'
+      });
+    }
+
+    // Find pending phone verification
+    const phoneVerificationData = pendingPhoneVerifications.get(phone);
+    if (!phoneVerificationData) {
+      return res.status(400).json({
+        success: false,
+        message: 'No pending phone verification found'
+      });
+    }
+
+    // Check if verification code matches
+    if (phoneVerificationData.verificationCode !== verificationCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid verification code'
+      });
+    }
+
+    // Check if verification is not expired (10 minutes)
+    const now = new Date();
+    const verificationTime = new Date(phoneVerificationData.createdAt);
+    if (now - verificationTime > 10 * 60 * 1000) {
+      pendingPhoneVerifications.delete(phone);
+      return res.status(400).json({
+        success: false,
+        message: 'Verification code has expired. Please request a new one.'
+      });
+    }
+
+    // Update registration data to mark phone as verified
+    registrationData.isPhoneVerified = true;
+    pendingRegistrations.set(email, registrationData);
+
+    // Remove from pending phone verifications
+    pendingPhoneVerifications.delete(phone);
+
+    res.json({
+      success: true,
+      message: 'Phone number verified successfully for registration'
+    });
+  } catch (error) {
+    console.error('Phone verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Phone verification failed'
     });
   }
 });

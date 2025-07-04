@@ -11,6 +11,7 @@ function App() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
+  const [phoneVerificationSent, setPhoneVerificationSent] = useState(false);
 
   // Fetch complaints after login
   useEffect(() => {
@@ -75,8 +76,8 @@ function App() {
       if (data.success) {
         if (data.needsVerification) {
           setVerificationEmail(data.email);
-          setView('verification');
-          setError('Please check your email and enter the verification code.');
+          // Send phone verification first
+          await handleSendPhoneVerification();
         } else {
           alert('Registration successful! Please check your email for verification.');
           setView('login');
@@ -172,6 +173,62 @@ function App() {
     setLoading(false);
   };
 
+  // Send phone verification code
+  const handleSendPhoneVerification = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/auth/send-phone-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: form.phone,
+          name: form.name
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPhoneVerificationSent(true);
+        setError('Phone verification code sent to your WhatsApp!');
+      } else {
+        setError(data.message);
+      }
+    } catch (error) {
+      setError('Network error');
+    }
+    setLoading(false);
+  };
+
+  // Verify phone number
+  const handleVerifyPhone = async e => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/auth/verify-phone-registration`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: verificationEmail,
+          phone: form.phone,
+          verificationCode: form.phoneVerificationCode
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setError('');
+        setPhoneVerificationSent(false);
+        // Continue with email verification
+        setView('verification');
+      } else {
+        setError(data.message);
+      }
+    } catch (error) {
+      setError('Network error');
+    }
+    setLoading(false);
+  };
+
   // UI
   if (view === 'login') {
     return (
@@ -217,13 +274,38 @@ function App() {
     return (
       <div>
         <h2>Register</h2>
-        <form onSubmit={handleRegister}>
-          <input name="name" placeholder="Name" onChange={handleChange} required /><br />
-          <input name="email" type="email" placeholder="Email" onChange={handleChange} required /><br />
-          <input name="phone" placeholder="Phone" onChange={handleChange} required /><br />
-          <input name="password" type="password" placeholder="Password" onChange={handleChange} required /><br />
-          <button type="submit" disabled={loading}>Register</button>
-        </form>
+        {!phoneVerificationSent ? (
+          <form onSubmit={handleRegister}>
+            <input name="name" placeholder="Name" onChange={handleChange} required /><br />
+            <input name="email" type="email" placeholder="Email" onChange={handleChange} required /><br />
+            <input name="phone" placeholder="Phone (with country code)" onChange={handleChange} required /><br />
+            <input name="password" type="password" placeholder="Password" onChange={handleChange} required /><br />
+            <button type="submit" disabled={loading}>Register</button>
+          </form>
+        ) : (
+          <div>
+            <h3>Verify Phone Number</h3>
+            <p>We've sent a verification code to your WhatsApp number: {form.phone}</p>
+            <form onSubmit={handleVerifyPhone}>
+              <input
+                name="phoneVerificationCode"
+                placeholder="Enter 6-digit code from WhatsApp"
+                onChange={handleChange}
+                maxLength="6"
+                required
+              /><br />
+              <button type="submit" disabled={loading}>
+                {loading ? 'Verifying...' : 'Verify Phone'}
+              </button>
+            </form>
+            <button onClick={handleSendPhoneVerification} disabled={loading}>
+              Resend Code
+            </button>
+            <button onClick={() => {setPhoneVerificationSent(false); setError('');}}>
+              Back to Registration
+            </button>
+          </div>
+        )}
         <button onClick={() => setView('login')}>Back to Login</button>
         {error && <div style={{color:'red'}}>{error}</div>}
       </div>

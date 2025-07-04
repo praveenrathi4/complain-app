@@ -160,13 +160,16 @@ function App() {
       if (data.success) {
         setError('');
         setNeedsVerification(false);
+        // Store credentials before clearing form
+        const loginEmail = verificationEmail;
+        const loginPassword = form.password;
         setVerificationEmail('');
         setForm({}); // Clear the form
         // Registration complete, automatically log in
         const loginRes = await fetch(`${API_URL}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: form.email, password: form.password })
+          body: JSON.stringify({ email: loginEmail, password: loginPassword })
         });
         const loginData = await loginRes.json();
         if (loginData.success) {
